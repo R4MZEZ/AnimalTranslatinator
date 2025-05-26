@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(meow)
+project(AnimalTranslatinator)
 set(SRCDIR src)
 set(INCDIR include)
 file(GLOB SRCS "${SRCDIR}/*.cpp")
