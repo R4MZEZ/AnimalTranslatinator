@@ -135,6 +135,10 @@ struct DecodedAnimalCharacteristic {
     AnimalCharacteristic animal;
 };
 
+struct AnimalDecodingStub {
+    std::vector<AnimalType> types;
+};
+
 namespace random {
 
 void initRandom() {

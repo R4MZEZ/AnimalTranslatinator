@@ -85,9 +85,38 @@ public:
     Translator() {}
 
     std::vector<animal::DecodedAnimalCharacteristic> translate(std::vector<pantomime::Pantomime> video,
-                                                               std::vector<syllable::Sound> sound) {
-        return std::vector<animal::DecodedAnimalCharacteristic>();
+                                                               std::vector<syllable::Sound> sound,
+                                                               std::vector<animal::AnimalType> types) {
+        std::vector<animal::DecodedAnimalCharacteristic> decoded;
+        for (size_t iter = 0; iter < video.size(); iter++) {
+            animal::DecodedAnimalCharacteristic animal;
+            animal.animal.body  = predictPantomime(video, iter);
+            animal.animal.sound = predictSound(sound, iter);
+            animal.animal_type  = predictAnimal(animal.animal.body, animal.animal.sound, types, iter);
+            animal.message      = predictMessaage(animal.animal.body, animal.animal.sound, animal.animal_type);
+        }
+        return decoded;
     }
+
+private:
+    pantomime::Pantomime predictPantomime(std::vector<pantomime::Pantomime>& video, size_t iter) { return video[iter]; }
+
+    syllable::Sound predictSound(std::vector<syllable::Sound>& sound, size_t iter) { return sound[iter]; }
+
+    animal::AnimalType predictAnimal(pantomime::Pantomime& pantomime, syllable::Sound& sound,
+                                     std::vector<animal::AnimalType>& types, size_t iter) {
+        return types[iter];
+    }
+
+    std::string predictMessaage(pantomime::Pantomime& pantomime, syllable::Sound& sound, animal::AnimalType type) {
+        const std::vector<std::string> messages{"Хочу гуляш", "Lorem Ipsum", "Бойся меня, кожаный мешок",
+                                                "Давай играть"};
+        return messages[std::rand() % messages.size()];
+    }
+
+    std::vector<animal::DecodedAnimalCharacteristic> prepareOutput(std::vector<pantomime::Pantomime> video,
+                                                                   std::vector<syllable::Sound> sound,
+                                                                   std::vector<animal::AnimalType> types) {}
 };
 
 class Monitor {
@@ -95,6 +124,9 @@ public:
     Monitor() {}
 
     void display(std::vector<animal::DecodedAnimalCharacteristic>) {}
+
+private:
+    std::map<animal::AnimalType, std::string> animal_names;
 };
 
 class AnimalTranslatinator {
@@ -105,7 +137,8 @@ public:
 
     void turnOff() { power_ = false; }
 
-    void startListening(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound) {
+    void startListening(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
+                        std::deque<animal::AnimalDecodingStub>& types) {
         if (power_) {
             // In real device alghoritm should split all input data to logical batches
             // Instead of it we are using deques
@@ -119,7 +152,8 @@ public:
             pantomime.pop_front();
             std::vector<syllable::Sound> sound_propeperty = sensor.splitAndClassifySound(sound.front());
             sound.pop_front();
-            auto messages = translator.translate(video_property, sound_propeperty);
+            auto messages = translator.translate(video_property, sound_propeperty, types.front().types);
+            types.pop_front();
             monitor.display(messages);
             std::cout << "displayed" << std::endl;
         }

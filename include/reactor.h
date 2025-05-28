@@ -12,7 +12,7 @@ namespace reactor {
 class AnimalReactor {
 public:
     AnimalReactor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-                  std::condition_variable& reactive_cv)
+                  std::deque<animal::AnimalDecodingStub>& types, std::condition_variable& reactive_cv)
         : pantomime(pantomime),
           sound(sound),
           reactive_cv(reactive_cv),
