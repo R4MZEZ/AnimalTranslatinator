@@ -1,56 +1,83 @@
+/*!
+ * @file
+ * @brief Описание структуры и алгоритма устройства - транслятора
+ * @author Степанов Михаил, Казаченко Роман
+ * @version 1.0
+ */
 #pragma once
 
 #include "animal_types.h"
 #include <condition_variable>
 #include <deque>
+#include <iostream>
 
 namespace translator {
 
+/*!
+ * @brief Класс для обработчика входных сигналов
+ * Описывает получение информации из окружающего мира и подготовка данных для передачи на переводчик.
+ */
 class Sensor {
 public:
+    /*!
+     * @brief Создание модуля обработки входных сигнаов
+     * @param[out] reactive_cv Триггер на поступление данных.
+     */
     Sensor(std::condition_variable& reactive_cv_) : primary_sensor(reactive_cv_) {}
 
-    void waitAndPackData() { primary_sensor.waitAndPackData(); }
+    /*!
+     * @brief Ожидание поступления атомарных данных.
+     * Ожидание происходит до тех пор пока не будет получено минимально необходимое количество информации для обработки
+     * @todo На данный момент реализовано программно через триггер. Должно реагировать на видео и несущие звука.
+     */
+    void waitAndPackData();
 
-    std::vector<pantomime::Pantomime> splitAndClassifyVideo(pantomime::Video& video) {
-        return video_formatter.splitAndClassify(video);
-    }
+    /*!
+     * @brief Передача полученных видео-данных на обработку.
+     * Обработчик строит карту глубины и маскирует объекты для разделения животных на картинке и получение их эмоций.
+     * @todo Не реализована передача видео. Данные поступает в предзаготовленном виде.
+     */
+    std::vector<pantomime::Pantomime> splitAndClassifyVideo(pantomime::Video& video);
 
-    std::vector<syllable::Sound> splitAndClassifySound(syllable::Noise& noise) {
-        return sound_formatter.splitAndClassify(noise);
-    }
+    /*!
+     * @brief Передача полученных аудио-данных на обработку.
+     * Обработчик делит данные на несущие и по частоте и громкости относит звукии соответствующим животным.
+     * @todo Не реализована передача аудио. Данные поступает в предзаготовленном виде.
+     */
+    std::vector<syllable::Sound> splitAndClassifySound(syllable::Noise& noise);
 
 private:
+    /*!
+     * @brief Подсистема первичных датчиков видео и звука.
+     * Описывает получение "сырой информации" и выявление достаточности полученной информации.
+     */
     class PrimarySensor {
     public:
+        /*!
+         * @brief Создание модуля первичных датчиков.
+         * @param[out] reactive_cv Триггер на поступление данных.
+         */
         PrimarySensor(std::condition_variable& reactive_cv_) : cv_(reactive_cv_) {}
 
-        void waitAndPackData() {
-            // Stub that waits for notify from reactor
-            std::cout << "blocked" << std::endl;
-            std::mutex mu_;
-            std::unique_lock lock(mu_);
-            cv_.wait(lock);
-            std::cout << "unblocked" << std::endl;
-        }
+        /*!
+         * @brief Ожидание поступления атомарных данных.
+         * Ожидание происходит до тех пор пока не будет получено минимально необходимое количество информации
+         */
+        void waitAndPackData();
 
     private:
         std::condition_variable& cv_;
     };
 
+    /*!
+     * @brief Подсистема обработки видео.
+     * Описывает получение "сырой информации" и выявление достаточности полученной информации.
+     */
     class VideoFormatter {
     public:
         VideoFormatter() {}
 
-        std::vector<pantomime::Pantomime> splitAndClassify(pantomime::Video& video) {
-            // In real device we need to build DeepMap. In would helps to mask animals on video and get their real sizes
-            buildDeepMap();
-            // Split objects on video to different entities and track their movements
-            splitObjects();
-            // Classify pantomimes of this entities
-            classifyObjects();
-            return video.figures;
-        }
+        std::vector<pantomime::Pantomime> splitAndClassify(pantomime::Video& video);
 
     private:
         void buildDeepMap() {};
@@ -62,13 +89,7 @@ private:
     public:
         SoundFormatter() {}
 
-        std::vector<syllable::Sound> splitAndClassify(syllable::Noise& noise) {
-            // In real device we need to build DeepMap. In would helps to mask animals on video and get their real sizes
-            splitFrequences();
-            // Split objects on video to different entities and track their movements
-            splitVolume();
-            return noise.noises;
-        }
+        std::vector<syllable::Sound> splitAndClassify(syllable::Noise& noise);
 
     private:
         void splitFrequences() {};
@@ -86,44 +107,24 @@ public:
 
     std::vector<animal::DecodedAnimalCharacteristic> translate(std::vector<pantomime::Pantomime> video,
                                                                std::vector<syllable::Sound> sound,
-                                                               std::vector<animal::AnimalType> types) {
-        std::vector<animal::DecodedAnimalCharacteristic> decoded;
-        for (size_t iter = 0; iter < video.size(); iter++) {
-            animal::DecodedAnimalCharacteristic animal;
-            animal.animal.body  = predictPantomime(video, iter);
-            animal.animal.sound = predictSound(sound, iter);
-            animal.animal_type  = predictAnimal(animal.animal.body, animal.animal.sound, types, iter);
-            animal.message      = predictMessaage(animal.animal.body, animal.animal.sound, animal.animal_type);
-        }
-        return decoded;
-    }
+                                                               std::vector<animal::AnimalType> types);
 
 private:
-    pantomime::Pantomime predictPantomime(std::vector<pantomime::Pantomime>& video, size_t iter) { return video[iter]; }
+    pantomime::Pantomime predictPantomime(std::vector<pantomime::Pantomime>& video, size_t iter);
 
-    syllable::Sound predictSound(std::vector<syllable::Sound>& sound, size_t iter) { return sound[iter]; }
+    syllable::Sound predictSound(std::vector<syllable::Sound>& sound, size_t iter);
 
     animal::AnimalType predictAnimal(pantomime::Pantomime& pantomime, syllable::Sound& sound,
-                                     std::vector<animal::AnimalType>& types, size_t iter) {
-        return types[iter];
-    }
+                                     std::vector<animal::AnimalType>& types, size_t iter);
 
-    std::string predictMessaage(pantomime::Pantomime& pantomime, syllable::Sound& sound, animal::AnimalType type) {
-        const std::vector<std::string> messages{"Хочу гуляш", "Lorem Ipsum", "Бойся меня, кожаный мешок",
-                                                "Давай играть"};
-        return messages[std::rand() % messages.size()];
-    }
-
-    std::vector<animal::DecodedAnimalCharacteristic> prepareOutput(std::vector<pantomime::Pantomime> video,
-                                                                   std::vector<syllable::Sound> sound,
-                                                                   std::vector<animal::AnimalType> types) {}
+    std::string predictMessaage(pantomime::Pantomime& pantomime, syllable::Sound& sound, animal::AnimalType type);
 };
 
 class Monitor {
 public:
-    Monitor() {}
+    Monitor();
 
-    void display(std::vector<animal::DecodedAnimalCharacteristic>) {}
+    void display(std::vector<animal::DecodedAnimalCharacteristic> animals);
 
 private:
     std::map<animal::AnimalType, std::string> animal_names;
@@ -133,31 +134,12 @@ class AnimalTranslatinator {
 public:
     AnimalTranslatinator(std::condition_variable& reactive_cv_) : sensor(reactive_cv_) {}
 
-    void turnOn() { power_ = true; }
+    void turnOn();
 
-    void turnOff() { power_ = false; }
+    void turnOff();
 
     void startListening(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-                        std::deque<animal::AnimalDecodingStub>& types) {
-        if (power_) {
-            // In real device alghoritm should split all input data to logical batches
-            // Instead of it we are using deques
-            std::cout << "waits until data" << std::endl;
-            sensor.waitAndPackData();
-            std::cout << "got data" << std::endl;
-            if (pantomime.empty()) {
-                return;
-            }
-            std::vector<pantomime::Pantomime> video_property = sensor.splitAndClassifyVideo(pantomime.front());
-            pantomime.pop_front();
-            std::vector<syllable::Sound> sound_propeperty = sensor.splitAndClassifySound(sound.front());
-            sound.pop_front();
-            auto messages = translator.translate(video_property, sound_propeperty, types.front().types);
-            types.pop_front();
-            monitor.display(messages);
-            std::cout << "displayed" << std::endl;
-        }
-    }
+                        std::deque<animal::AnimalDecodingStub>& types);
 
 private:
     Sensor sensor;

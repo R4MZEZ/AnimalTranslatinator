@@ -1,3 +1,9 @@
+/*!
+ * @file
+ * @brief Механизм генерации данных для активации датчиков
+ * @author Степанов Михаил, Казаченко Роман
+ * @version 1.0
+ */
 #pragma once
 
 #include "animal_types.h"
@@ -9,58 +15,46 @@
 
 namespace reactor {
 
+/*!
+ * @brief Класс для генерации данных
+ * Описывает окружение с "говорящими животными", каждое из которых обладает собственными физическими признаками.
+ */
 class AnimalReactor {
 public:
+    /*!
+     * @brief Создание генератора данных
+     * @param[out] pantomime Поток генерируемого видео
+     * @param[out] sound Поток генерируемого звука
+     * @param[out] types Поток генерируемых типов животных
+     * @param[out] reactive_cv Триггер на генерируемые данные.
+     */
     AnimalReactor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-                  std::deque<animal::AnimalDecodingStub>& types, std::condition_variable& reactive_cv)
-        : pantomime(pantomime),
-          sound(sound),
-          reactive_cv(reactive_cv),
-          is_talking(true) {}
+                  std::deque<animal::AnimalDecodingStub>& types, std::condition_variable& reactive_cv);
 
-    void startTalking() {
-        std::cout << "start talking" << std::endl;
-        is_talking = true;
-        for (size_t iter = 0; iter < kIterCount; iter++) {
-            {
-                std::unique_lock lock(mu_);
-                double rand    = ((double)std::rand() / (RAND_MAX));
-                size_t timeout = std::floor((rand * (kMaxSecond - kMinSecond) + kMinSecond) * kSecondScaller);
-                std::cout << "wait for " << timeout << std::endl;
-                cv_.wait_for(lock, std::chrono::milliseconds(timeout));
-            }
-            size_t animal_count = std::rand() % kMaxAnimal + 1;
-            pantomime::Video video;
-            syllable::Noise noise;
-            for (size_t iter = 0; iter < animal_count; iter++) {
-                animal::DecodedAnimalCharacteristic animal = animal::random::generateAnimal();
-                video.figures.push_back(animal.animal.body);
-                noise.noises.push_back(animal.animal.sound);
-            }
-            pantomime.push_back(video);
-            sound.push_back(noise);
-            std::cout << "send data" << std::endl;
-            reactive_cv.notify_all();
-        }
-        is_talking = false;
-        std::cout << "going out" << std::endl;
-        reactive_cv.notify_all();
-    }
+    /*!
+     * @brief Запуск механизма генерации данных
+     * Механизм генерирует случайные данные с задержкой в заданном диапазоне,
+     * диапазон задержки задается через статические параметры класса.
+     */
+    void startTalking();
 
+    /// @brief Переменная опроса. Имитирует состояние окружения - есть ли рядом животные.
     volatile bool is_talking;
 
 private:
     std::mutex mu_;
     std::condition_variable cv_;
-    std::deque<pantomime::Video>& pantomime;
     std::deque<syllable::Noise>& sound;
     std::condition_variable& reactive_cv;
+    std::deque<pantomime::Video>& pantomime;
+    std::deque<animal::AnimalDecodingStub>& types;
+    std::map<animal::AnimalType, std::string> animal_names;
 
-    static constexpr double kMaxSecond     = 0.2;
-    static constexpr double kMinSecond     = 0.1;
-    static constexpr size_t kSecondScaller = 1000;
-    static constexpr size_t kMaxAnimal     = 3;
-    static constexpr size_t kIterCount     = 5;
+    static constexpr double kMaxSecond     = 2;     ///< Максимальное значение диапазона задержки
+    static constexpr double kMinSecond     = 1;     ///< Минимальное значение диапазона задержки
+    static constexpr size_t kSecondScaller = 1000;  ///< Делитель значение (1000 для деления мс и получения с)
+    static constexpr size_t kMaxAnimal     = 3;     ///< Максимальное количество животных в одном считыванини данных
+    static constexpr size_t kIterCount     = 5;     ///< Количество итераций по генерации данных
 };
 
 }  // namespace reactor

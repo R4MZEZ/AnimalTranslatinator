@@ -1,3 +1,9 @@
+/*
+ * @brief Основной цикл для запуска перевода и инициализации взаимодействия
+ * @author Степанов Михаил, Казаченко Роман
+ * @version 1.0
+ */
+
 #include "reactor.h"
 #include "translator.h"
 #include <iostream>
@@ -10,14 +16,13 @@ int main() {
     std::condition_variable reactive_cv_;
     reactor::AnimalReactor env(pantomime, sound, types, reactive_cv_);
     translator::AnimalTranslatinator translator(reactive_cv_);
+    std::cout << "Начинаем проверку работоспособностии устройства" << std::endl;
     std::thread reactor_thread(&reactor::AnimalReactor::startTalking, &env);
     translator.turnOn();
     while (env.is_talking) {
         translator.startListening(pantomime, sound, types);
     }
     translator.turnOff();
-    std::cout << "on join" << std::endl;
     reactor_thread.join();
-    std::cout << "out join" << std::endl;
     return 0;
 }
