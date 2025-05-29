@@ -52,7 +52,7 @@ std::vector<animal::DecodedAnimalCharacteristic> Translator::translate(std::vect
         animal.animal.body  = predictPantomime(video, iter);
         animal.animal.sound = predictSound(sound, iter);
         animal.animal_type  = predictAnimal(animal.animal.body, animal.animal.sound, types, iter);
-        animal.message      = predictMessaage(animal.animal.body, animal.animal.sound, animal.animal_type);
+        animal.message      = predictMessage(animal.animal.body, animal.animal.sound, animal.animal_type);
         decoded.push_back(animal);
     }
     std::cout << "Перевод окончен" << std::endl;
@@ -72,8 +72,8 @@ animal::AnimalType Translator::predictAnimal(pantomime::Pantomime& pantomime, sy
     return types[iter];
 }
 
-std::string Translator::predictMessaage(pantomime::Pantomime& pantomime, syllable::Sound& sound,
-                                        animal::AnimalType type) {
+std::string Translator::predictMessage(pantomime::Pantomime& pantomime, syllable::Sound& sound,
+                                       animal::AnimalType type) {
     const std::vector<std::string> messages{"Хочу гуляш", "Lorem Ipsum", "Бойся меня, кожаный мешок", "Давай играть"};
     return messages[std::rand() % messages.size()];
 }
