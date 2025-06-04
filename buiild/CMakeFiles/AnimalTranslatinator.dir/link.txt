@@ -1,1 +1,0 @@
-/usr/bin/c++  -std=c++20 CMakeFiles/AnimalTranslatinator.dir/src/animal_types.cpp.o CMakeFiles/AnimalTranslatinator.dir/src/reactor.cpp.o CMakeFiles/AnimalTranslatinator.dir/src/translator.cpp.o CMakeFiles/AnimalTranslatinator.dir/src/workflow.cpp.o -o AnimalTranslatinator 

@@ -1,3 +1,0 @@
-/home/stmikeal/homeworks/AnimalTranslatinator/buiild/CMakeFiles/AnimalTranslatinator.dir
-/home/stmikeal/homeworks/AnimalTranslatinator/buiild/CMakeFiles/edit_cache.dir
-/home/stmikeal/homeworks/AnimalTranslatinator/buiild/CMakeFiles/rebuild_cache.dir
