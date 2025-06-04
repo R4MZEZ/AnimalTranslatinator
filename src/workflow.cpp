@@ -14,13 +14,17 @@ int main() {
     std::deque<syllable::Noise> sound;
     std::deque<animal::AnimalDecodingStub> types;
     std::condition_variable reactive_cv_;
+    // Создаем внешние реакции в виде "животных"
     reactor::AnimalReactor env(pantomime, sound, types, reactive_cv_);
-    translator::AnimalTranslatinator translator(reactive_cv_);
+    // Создаем переводчик
+    translator::AnimalTranslatinator translator(pantomime, sound, reactive_cv_);
     std::cout << "Начинаем проверку работоспособностии устройства" << std::endl;
+    // Запускаем производство объектов с животными
     std::thread reactor_thread(&reactor::AnimalReactor::startTalking, &env);
     translator.turnOn();
     while (env.is_talking) {
-        translator.startListening(pantomime, sound, types);
+        // Запускаем переводчик на прослушивание пока животные разговариваают
+        translator.startListening(types);
     }
     translator.turnOff();
     reactor_thread.join();

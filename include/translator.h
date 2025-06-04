@@ -21,30 +21,21 @@ class Sensor {
 public:
     /*!
      * @brief Создание модуля обработки входных сигнаов
+     * @param[in] pantomime Имитация видео-потока
+     * @param[in] sound Имитация аудио-потока
      * @param[in] reactive_cv Триггер на поступление данных.
      */
-    Sensor(std::condition_variable& reactive_cv_) : primary_sensor(reactive_cv_) {}
+    Sensor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
+           std::condition_variable& reactive_cv_)
+        : primary_sensor(pantomime, sound, reactive_cv_) {}
 
     /*!
-     * @brief Ожидание поступления атомарных данных.
+     * @brief Ожидание поступление минимального набора данных и их обработки
      * Ожидание происходит до тех пор пока не будет получено минимально необходимое количество информации для обработки
-     * @todo На данный момент реализовано программно через триггер. Должно реагировать на видео и несущие звука.
+     * @todo Условность данного метода заключается в том, что мы не генерируем настоящий видео и аудио потоки, а лишь
+     * ожидаем тригера поступления данных в очередь обработки
      */
-    void waitAndPackData();
-
-    /*!
-     * @brief Передача полученных видео-данных на обработку.
-     * Обработчик строит карту глубины и маскирует объекты для разделения животных на картинке и получение их эмоций.
-     * @todo Не реализована передача видео. Данные поступает в предзаготовленном виде.
-     */
-    std::vector<pantomime::Pantomime> splitAndClassifyVideo(pantomime::Video& video);
-
-    /*!
-     * @brief Передача полученных аудио-данных на обработку.
-     * Обработчик делит данные на несущие и по частоте и громкости относит звукии соответствующим животным.
-     * @todo Не реализована передача аудио. Данные поступает в предзаготовленном виде.
-     */
-    std::vector<syllable::Sound> splitAndClassifySound(syllable::Noise& noise);
+    animal::PreparedData prepareBatchOfData();
 
 private:
     /*!
@@ -55,17 +46,27 @@ private:
     public:
         /*!
          * @brief Создание модуля первичных датчиков.
+         * @param[in] pantomime Имитация видео-потока
+         * @param[in] sound Имитация аудио-потока
          * @param[in] reactive_cv Триггер на поступление данных.
          */
-        PrimarySensor(std::condition_variable& reactive_cv_) : cv_(reactive_cv_) {}
+        PrimarySensor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
+                      std::condition_variable& reactive_cv_)
+            : pantomime(pantomime),
+              sound(sound),
+              cv_(reactive_cv_) {}
 
         /*!
-         * @brief Ожидание поступления атомарных данных.
+         * @brief Ожидание поступления атомарных данных (Первичное чтение).
          * Ожидание происходит до тех пор пока не будет получено минимально необходимое количество информации
+         * @return Возвращаемые с датчиков данные. Разделены на аудио-данные и видео-данные. К видео-данным
+         * дополнительно прилагается растояние до центрального пикселя на первом кадре
          */
-        void waitAndPackData();
+        animal::PackedData waitAndPackData();
 
     private:
+        std::deque<pantomime::Video>& pantomime;
+        std::deque<syllable::Noise>& sound;
         std::condition_variable& cv_;
     };
 
@@ -83,16 +84,24 @@ private:
         /*!
          * @brief Передача полученных видео-данных на обработку.
          * Обработчик строит карту глубины и маскирует объекты для разделения животных и получение их эмоций.
+         * @return Разделенные существа на видео
          */
-        std::vector<pantomime::Pantomime> splitAndClassify(pantomime::Video& video);
+        std::vector<pantomime::Pantomime> splitAndClassify(pantomime::Video& video, double distance);
 
     private:
+        /// @brief Карта глубины с поправкой на расстояние
+        struct DeepMap {
+            // Пустая структура-заглушка для создание карты глубины
+            std::vector<pantomime::Pantomime> pantomime;
+        };
+
         /// @brief Построение карты глубины
-        void buildDeepMap() {};
-        /// @brief Маскирование отдельных сущностей на видео
-        void splitObjects() {};
-        /// @brief Разделение объектов на живые и не живые
-        void classifyObjects() {};
+        /// @todo Реальный алгоритм основан на использовании нейронных сетей и алгоритмов машинного обучения
+        DeepMap buildDeepMap(pantomime::Video& video, double distance);
+
+        /// @brief Выделение визуальных признаков
+        /// @todo Реальный алгоритм по карте глубины разделяет объекты на изображении и получает их визуальные признаки
+        std::vector<pantomime::Pantomime> getVisualIndication(DeepMap& deep_map);
     };
 
     /*!
@@ -109,22 +118,31 @@ private:
         /*!
          * @brief Передача полученных аудио-данных на обработку.
          * Обработчик делит данные на несущие и по частоте и громкости относит звукии соответствующим животным.
-         * @todo Не реализована передача аудио. Данные поступает в предзаготовленном виде.
+         * @return Разделенные несущие на аудио
+         * @todo Не реализована передача аудио. Данные поступает в предзаготовленном виде
          */
-        std::vector<syllable::Sound> splitAndClassify(syllable::Noise& noise);
+        std::vector<syllable::Sound> devideCarrier(syllable::Noise& noise);
 
     private:
-        /// @brief Разделение частотных составляющих звука
-        void splitFrequences() {};
-        /// @brief Разделение амплитудных составляющих звука
-        void splitVolume() {};
+        struct Carrier {
+            // Пустая структура-заглушка для создание несущей
+            std::vector<syllable::Sound> sound;
+        };
+
+        /// @brief Разделение шума на составные части по чаастотным несущим.
+        /// @todo Реальный алгоритм основан на частотном анализе звука
+        Carrier splitCarrier(syllable::Noise& noise);
+
+        /// @brief Выделение звуковых признаков по несущим.
+        /// @todo Реальный алгоритм основан на восстановлении звуковых признаков при помощи нейронных сетей
+        std::vector<syllable::Sound> buildCarrier(Carrier);
     };
 
-    /// @brief Первичные датчики
+    /// @brief Первичные датчики (первичное чтение)
     PrimarySensor primary_sensor;
-    /// @brief Обработчик видео
+    /// @brief Обработчик видео-данных
     VideoFormatter video_formatter;
-    /// @brief Обработчик звука
+    /// @brief Обработчик аудио-данных
     SoundFormatter sound_formatter;
 };
 
@@ -144,27 +162,40 @@ public:
      * @param[in] video Предобработанное видео
      * @param[in] sound Предобработанный звук
      * @param[in] types Заглушка в виде типов животных
+     * @return Набор языковых признаков и переведенных сообщений от животных
      */
-    std::vector<animal::DecodedAnimalCharacteristic> translate(std::vector<pantomime::Pantomime> video,
-                                                               std::vector<syllable::Sound> sound,
+    std::vector<animal::DecodedAnimalCharacteristic> translate(animal::PreparedData& prepared_data,
                                                                std::vector<animal::AnimalType> types);
 
 private:
     /*!
+     * @brief Подготовка первичных языковых сигналов
+     * @param[in] video Предобработанное видео
+     * @param[in] sound Предобработанное аудио
+     * @param[in] types Очередь типов животных для заглушки
+     * @param[in] iter Порядковый номер животного
+     */
+    animal::DecodedAnimalCharacteristic predictAnimalCharacteristic(std::vector<pantomime::Pantomime>& video,
+                                                                    std::vector<syllable::Sound>& sound,
+                                                                    std::vector<animal::AnimalType>& types,
+                                                                    size_t iter);
+
+    /*!
      * @brief Определение пантомимики животного
      * @param[in] video Предобработанное видео
+     * @param[in] type Тип животного
      * @param[in] iter Порядковый номер животного
-     * @todo
      */
-    pantomime::Pantomime predictPantomime(std::vector<pantomime::Pantomime>& video, size_t iter);
+    pantomime::Pantomime predictPantomime(std::vector<pantomime::Pantomime>& video, animal::AnimalType type,
+                                          size_t iter);
 
     /*!
      * @brief Соотнесение звука животного
      * @param[in] sound Предобработанное аудио
+     * @param[in] type Тип животного
      * @param[in] iter Порядковый номер животного
-     * @todo
      */
-    syllable::Sound predictSound(std::vector<syllable::Sound>& sound, size_t iter);
+    syllable::Sound predictSound(std::vector<syllable::Sound>& sound, animal::AnimalType type, size_t iter);
 
     /*!
      * @brief Классификация животного
@@ -172,19 +203,96 @@ private:
      * @param[in] sound Соотнесенный звук животного
      * @param[in] types Очередь типов животных для заглушки
      * @param[in] iter Порядковый номер животного
-     * @todo
      */
     animal::AnimalType predictAnimal(pantomime::Pantomime& pantomime, syllable::Sound& sound,
                                      std::vector<animal::AnimalType>& types, size_t iter);
 
     /*!
-     * @brief Составление подходящей фразы для перевода
+     * @brief Настроение животного
+     */
+    struct Mood {
+        // Пустая структура-заглушка для настроения животного
+    };
+
+    /*!
+     * @brief Выделение настроения по языковым сигналам
      * @param[in] pantomime Пантомимика животного
      * @param[in] sound Соотнесенный звук животного
      * @param[in] type Вид животного
-     * @todo
      */
-    std::string predictMessage(pantomime::Pantomime& pantomime, syllable::Sound& sound, animal::AnimalType type);
+    Mood predictMood(animal::DecodedAnimalCharacteristic& animal);
+
+    /*!
+     * @brief Потребности животного
+     */
+    struct Need {
+        // Пустая структура-заглушка для потребности животного
+    };
+
+    /*!
+     * @brief Построение предсказания о потребности животного
+     * @param[in] pantomime Пантомимика животного
+     * @param[in] sound Соотнесенный звук животного
+     * @param[in] type Вид животного
+     * @param[in] mood Настроение животного
+     */
+    Need predictNeed(animal::DecodedAnimalCharacteristic& animal, Mood mood);
+
+    /*!
+     * @brief Перевод языка животных в потребности
+     * @param[in] pantomime Пантомимика животного
+     * @param[in] sound Соотнесенный звук животного
+     * @param[in] type Вид животного
+     */
+    Need translateNeed(animal::DecodedAnimalCharacteristic& animal);
+
+    enum MessageTemplate {
+        kGoulash = 0,
+        kLorem,
+        kAfraid,
+        kPlay,
+        kMaxMessageTemplate,
+    };
+
+    enum Locale {
+        RU,
+        EN,
+    };
+
+    std::map<MessageTemplate, std::string> messages_ru{{kGoulash, "Хочу гуляш"},
+                                                       {kLorem, "Lorem Ipsum"},
+                                                       {kAfraid, "Бойся меня, кожаный мешок"},
+                                                       {kPlay, "Давай играть"}};
+
+    std::map<MessageTemplate, std::string> messages_en{{kGoulash, "I want goulash"},
+                                                       {kLorem, "Lorem Ipsum"},
+                                                       {kAfraid, "Afraid of me, leather bag"},
+                                                       {kPlay, "Let's play"}};
+
+    std::map<Locale, std::map<MessageTemplate, std::string>> message_locale{{RU, messages_ru}, {EN, messages_en}};
+
+    /*!
+     * @brief Выделение шаблона человеческой языковой конструкции
+     * @param[in] pantomime Пантомимика животного
+     * @param[in] sound Соотнесенный звук животного
+     * @param[in] type Вид животного
+     * @param[in] need Потребность животного
+     */
+    MessageTemplate predictMessageTemplate(animal::DecodedAnimalCharacteristic& animal, Need& need);
+
+    /*!
+     * @brief Подготовка сообщения переводчика
+     * @param[in] message_template шаблон языковой конструкции
+     */
+    std::string translateMessage(MessageTemplate message_template);
+
+    /*!
+     * @brief Составление подходящей фразы на необходимом языке
+     * @param[in] pantomime Пантомимика животного
+     * @param[in] sound Соотнесенный звук животного
+     * @param[in] type Вид животного
+     */
+    std::string predictMessage(animal::DecodedAnimalCharacteristic& animal, Need& need);
 };
 
 /*!
@@ -217,7 +325,9 @@ public:
      * @brief Создание модели переводчика
      * @param[in] reactive_cv Триггер на поступление данных.
      */
-    AnimalTranslatinator(std::condition_variable& reactive_cv_) : sensor(reactive_cv_) {}
+    AnimalTranslatinator(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
+                         std::condition_variable& reactive_cv_)
+        : sensor(pantomime, sound, reactive_cv_) {}
 
     /*!
      * @brief Нажатие на кнопку включения
@@ -235,15 +345,14 @@ public:
      * @param[in] sound Входной поток аудио
      * @param[in] types Входной поток типов животных (для заглушки декодирования)
      */
-    void startListening(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-                        std::deque<animal::AnimalDecodingStub>& types);
+    void startListening(std::deque<animal::AnimalDecodingStub>& types);
 
 private:
     /// @brief Обработчик внешних сигналов
     Sensor sensor;
     /// @brief Переводчик сообщения
     Translator translator;
-    /// @brief Монитор для вывода на экран
+    /// @brief Монитор для вывода полученной информации
     Monitor monitor;
     bool power_ = false;
 };

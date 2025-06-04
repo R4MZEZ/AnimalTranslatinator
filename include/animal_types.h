@@ -90,6 +90,17 @@ struct Noise {
 
 namespace animal {
 
+struct PackedData {
+    syllable::Noise noise;
+    pantomime::Video video;
+    double distance;
+};
+
+struct PreparedData {
+    std::vector<pantomime::Pantomime> pantomime;
+    std::vector<syllable::Sound> sound;
+};
+
 enum AnimalType {
     Cat = 0,
     Dog,

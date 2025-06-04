@@ -2,80 +2,156 @@
 
 namespace translator {
 
-void Sensor::waitAndPackData() {
-    primary_sensor.waitAndPackData();
+animal::PreparedData Sensor::prepareBatchOfData() {
+    // Ожидание пока получим минимальный набор данных для анализа
+    animal::PackedData packed_data = primary_sensor.waitAndPackData();
+    animal::PreparedData prepared_data;
+    // Обрабатываем аудио-данные
+    prepared_data.sound = sound_formatter.devideCarrier(packed_data.noise);
+    // Обрабатываем видео-данные
+    prepared_data.pantomime = video_formatter.splitAndClassify(packed_data.video, packed_data.distance);
+    return prepared_data;
 }
 
-std::vector<pantomime::Pantomime> Sensor::splitAndClassifyVideo(pantomime::Video& video) {
-    std::cout << "Производим обработку видео" << std::endl;
-    return video_formatter.splitAndClassify(video);
-}
-
-std::vector<syllable::Sound> Sensor::splitAndClassifySound(syllable::Noise& noise) {
-    std::cout << "Производим обработку звука" << std::endl;
-    return sound_formatter.splitAndClassify(noise);
-}
-
-void Sensor::PrimarySensor::waitAndPackData() {
-    // Stub that waits for notify from reactor
+animal::PackedData Sensor::PrimarySensor::waitAndPackData() {
     std::mutex mu_;
     std::unique_lock lock(mu_);
     std::cout << "Устройство ждет окончания беседы" << std::endl;
+    // Вместо реального ожидания поступления минимального кол-ва данных ожидаем оповещения от класса Животного
     cv_.wait(lock);
+    // Создаем упакованные первичные данные с датчиков
+    animal::PackedData packed_data;
+    packed_data.video = pantomime.front();
+    pantomime.pop_front();
+    packed_data.noise = sound.front();
+    sound.pop_front();
+    packed_data.distance = (double)std::rand() / RAND_MAX;
+    // Передаем упакованные данные дальше
+    return packed_data;
 }
 
-std::vector<pantomime::Pantomime> Sensor::VideoFormatter::splitAndClassify(pantomime::Video& video) {
-    // In real device we need to build DeepMap. In would helps to mask animals on video and get their real sizes
-    buildDeepMap();
-    // Split objects on video to different entities and track their movements
-    splitObjects();
-    // Classify pantomimes of this entities
-    classifyObjects();
-    return video.figures;
+std::vector<pantomime::Pantomime> Sensor::VideoFormatter::splitAndClassify(pantomime::Video& video, double distance) {
+    // Строим карту глубины по изображению
+    DeepMap deep_map = buildDeepMap(video, distance);
+    // По карте глубины выделяем визуальные признаки различных сущностей на видео
+    return getVisualIndication(deep_map);
 }
 
-std::vector<syllable::Sound> Sensor::SoundFormatter::splitAndClassify(syllable::Noise& noise) {
-    // In real device we need to build DeepMap. In would helps to mask animals on video and get their real sizes
-    splitFrequences();
-    // Split objects on video to different entities and track their movements
-    splitVolume();
-    return noise.noises;
+Sensor::VideoFormatter::DeepMap Sensor::VideoFormatter::buildDeepMap(pantomime::Video& video, double distance) {
+    /// @todo Строим карту глубины
+    /// @todo Делаем поправку на расстояние
+    return (DeepMap){.pantomime = video.figures};
 }
 
-std::vector<animal::DecodedAnimalCharacteristic> Translator::translate(std::vector<pantomime::Pantomime> video,
-                                                                       std::vector<syllable::Sound> sound,
+std::vector<pantomime::Pantomime> Sensor::VideoFormatter::getVisualIndication(
+    Sensor::VideoFormatter::DeepMap& deep_map) {
+    /// @todo Разделяем объекты на видео
+    /// @todo Получаем первичную визуальную информацию об объектах
+    return deep_map.pantomime;
+}
+
+std::vector<syllable::Sound> Sensor::SoundFormatter::devideCarrier(syllable::Noise& noise) {
+    // Разделяем звук на несущие
+    Carrier carrier = splitCarrier(noise);
+    // Обрабатываем несущие выделяя частоты и громкость
+    return buildCarrier(carrier);
+}
+
+Sensor::SoundFormatter::Carrier Sensor::SoundFormatter::splitCarrier(syllable::Noise& noise) {
+    /// @todo Проводим частотный анализ звука
+    /// @todo На основе анализа делим звук на части
+    return (Carrier){.sound = noise.noises};
+}
+
+std::vector<syllable::Sound> Sensor::SoundFormatter::buildCarrier(Sensor::SoundFormatter::Carrier carrier) {
+    /// @todo Определяем среднюю частоту несущей
+    /// @todo определяем среднюю громкость звука
+    return carrier.sound;
+}
+
+std::vector<animal::DecodedAnimalCharacteristic> Translator::translate(animal::PreparedData& prepared_data,
                                                                        std::vector<animal::AnimalType> types) {
     std::vector<animal::DecodedAnimalCharacteristic> decoded;
     std::cout << "Начинаем перевод..." << std::endl;
-    for (size_t iter = 0; iter < video.size(); iter++) {
-        animal::DecodedAnimalCharacteristic animal;
-        animal.animal.body  = predictPantomime(video, iter);
-        animal.animal.sound = predictSound(sound, iter);
-        animal.animal_type  = predictAnimal(animal.animal.body, animal.animal.sound, types, iter);
-        animal.message      = predictMessage(animal.animal.body, animal.animal.sound, animal.animal_type);
+    // Проходимся по каждому существу в списке и составляем для него перевод
+    for (size_t iter = 0; iter < prepared_data.pantomime.size(); iter++) {
+        // Выделяем языковыве сигналы
+        animal::DecodedAnimalCharacteristic animal =
+            predictAnimalCharacteristic(prepared_data.pantomime, prepared_data.sound, types, iter);
+        // Пытаемся понять, какое настроение и какие потребности у животного
+        Need need = translateNeed(animal);
+        // Подготовливаем сообщение перевода
+        animal.message = predictMessage(animal, need);
         decoded.push_back(animal);
     }
     std::cout << "Перевод окончен" << std::endl;
     return decoded;
 }
 
-pantomime::Pantomime Translator::predictPantomime(std::vector<pantomime::Pantomime>& video, size_t iter) {
+animal::DecodedAnimalCharacteristic Translator::predictAnimalCharacteristic(std::vector<pantomime::Pantomime>& video,
+                                                                            std::vector<syllable::Sound>& sound,
+                                                                            std::vector<animal::AnimalType>& types,
+                                                                            size_t iter) {
+    animal::DecodedAnimalCharacteristic animal;
+    // Классификация животного
+    animal.animal_type = predictAnimal(animal.animal.body, animal.animal.sound, types, iter);
+    // Определяем пантомимимику
+    animal.animal.body = predictPantomime(video, animal.animal_type, iter);
+    // Соотносим звук с животным
+    animal.animal.sound = predictSound(sound, animal.animal_type, iter);
+    return animal;
+}
+
+pantomime::Pantomime Translator::predictPantomime(std::vector<pantomime::Pantomime>& video, animal::AnimalType type,
+                                                  size_t iter) {
+    /// @todo Заглушка. Вместо реального предсказания, просто забираем данные с видео
     return video[iter];
 }
 
-syllable::Sound Translator::predictSound(std::vector<syllable::Sound>& sound, size_t iter) {
+syllable::Sound Translator::predictSound(std::vector<syllable::Sound>& sound, animal::AnimalType type, size_t iter) {
+    /// @todo Заглушка. Вместо реального предсказания, просто забираем данные с аудио
     return sound[iter];
 }
 
 animal::AnimalType Translator::predictAnimal(pantomime::Pantomime& pantomime, syllable::Sound& sound,
                                              std::vector<animal::AnimalType>& types, size_t iter) {
+    /// @todo Заглушка. Вместо реальной классификации, просто забираем данные с потока
     return types[iter];
 }
 
-std::string Translator::predictMessage(pantomime::Pantomime& pantomime, syllable::Sound& sound,
-                                       animal::AnimalType type) {
-    const std::vector<std::string> messages{"Хочу гуляш", "Lorem Ipsum", "Бойся меня, кожаный мешок", "Давай играть"};
-    return messages[std::rand() % messages.size()];
+Translator::Need Translator::translateNeed(animal::DecodedAnimalCharacteristic& animal) {
+    // Выделяем настроение
+    Mood mood = predictMood(animal);
+    // Выделяем потребность
+    return predictNeed(animal, mood);
+}
+
+Translator::Mood Translator::predictMood(animal::DecodedAnimalCharacteristic& animal) {
+    return (Mood){};
+}
+
+Translator::Need Translator::predictNeed(animal::DecodedAnimalCharacteristic& animal, Translator::Mood mood) {
+    return (Need){};
+}
+
+Translator::MessageTemplate Translator::predictMessageTemplate(animal::DecodedAnimalCharacteristic& animal,
+                                                               Translator::Need& need) {
+    /// @todo Заглушка. Здесь шаблон должен выбираться на основании входных признаков, а не рандомно
+    return (MessageTemplate)(std::rand() % kMaxMessageTemplate);
+}
+
+std::string Translator::translateMessage(Translator::MessageTemplate message_template) {
+    // Выбор необходимой локали. Здесь подумать на кнопкой изменения языка.
+    // Стоит ли делать для разных стран разные устройства или добавить кнопку замены языка?
+    // В требованиях закрепленного решения нет и оно не срочное, откладываем на попозже.
+    return message_locale[RU][message_template];
+}
+
+std::string Translator::predictMessage(animal::DecodedAnimalCharacteristic& animal, Need& need) {
+    // Подготавливаем шаблон сообщения
+    Translator::MessageTemplate message_template = predictMessageTemplate(animal, need);
+    // Переводим шаблон на необходимый язык
+    return translateMessage(message_template);
 }
 
 Monitor::Monitor() {
@@ -109,23 +185,15 @@ void AnimalTranslatinator::turnOff() {
     power_ = false;
 }
 
-void AnimalTranslatinator::startListening(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-                                          std::deque<animal::AnimalDecodingStub>& types) {
+void AnimalTranslatinator::startListening(std::deque<animal::AnimalDecodingStub>& types) {
     if (power_) {
         std::cout << "На устройстве нажата кнопка прослушивания" << std::endl;
-        // In real device alghoritm should split all input data to logical batches
-        // Instead of it we are using deques
-        sensor.waitAndPackData();
-        if (pantomime.empty()) {
-            std::cout << "Кнопка прослушивания отпущена, кажется, здесь не разговаривают животные" << std::endl;
-            return;
-        }
-        std::vector<pantomime::Pantomime> video_property = sensor.splitAndClassifyVideo(pantomime.front());
-        pantomime.pop_front();
-        std::vector<syllable::Sound> sound_propeperty = sensor.splitAndClassifySound(sound.front());
-        sound.pop_front();
-        auto messages = translator.translate(video_property, sound_propeperty, types.front().types);
+        // Подготовка первичных данных
+        animal::PreparedData prepared_data = sensor.prepareBatchOfData();
+        // Перевод сообщения
+        auto messages = translator.translate(prepared_data, types.front().types);
         types.pop_front();
+        // Вывод пеервода на экран
         monitor.display(messages);
     }
 }
