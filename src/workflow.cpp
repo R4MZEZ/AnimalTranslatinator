@@ -19,7 +19,8 @@ enum Command {
 
 std::deque<Command> commandQueue;
 
-bool console = true;
+bool console    = true;
+bool is_working = true;
 
 void listenConsole() {
     while (console) {
@@ -52,7 +53,7 @@ int main() {
     std::cout << "Начинаем проверку работоспособностии устройства" << std::endl;
     // Запускаем производство объектов с животными
     std::thread console_thread(&listenConsole);
-    while (env.is_talking) {
+    while (is_working) {
         if (commandQueue.empty())
             continue;
         Command command = commandQueue.front();
@@ -71,7 +72,7 @@ int main() {
                 translator.turnOff();
                 break;
             case kExit:
-                env.is_talking = false;
+                is_working = false;
                 break;
         }
     }
