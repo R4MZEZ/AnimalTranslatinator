@@ -29,7 +29,13 @@ public:
      * @param[out] reactive_cv Триггер на генерируемые данные.
      */
     AnimalReactor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-                  std::deque<animal::AnimalDecodingStub>& types, std::condition_variable& reactive_cv);
+                  std::deque<animal::AnimalDecodingStub>& types, bool& reactive_cv);
+
+    ~AnimalReactor() {
+        std::cout << "Зоопарк закрывается..." << std::endl;
+        is_talking  = false;
+        reactive_cv = false;
+    }
 
     /*!
      * @brief Запуск механизма генерации данных
@@ -45,7 +51,7 @@ private:
     std::mutex mu_;
     std::condition_variable cv_;
     std::deque<syllable::Noise>& sound;
-    std::condition_variable& reactive_cv;
+    bool& reactive_cv;
     std::deque<pantomime::Video>& pantomime;
     std::deque<animal::AnimalDecodingStub>& types;
     std::map<animal::AnimalType, std::string> animal_names;

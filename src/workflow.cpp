@@ -9,24 +9,72 @@
 #include <iostream>
 #include <thread>
 
+enum Command {
+    kTalk,
+    kListen,
+    kOn,
+    kOff,
+    kExit
+};
+
+std::deque<Command> commandQueue;
+
+bool console = true;
+
+void listenConsole() {
+    while (console) {
+        std::string command;
+        std::cin >> command;
+        if (command == "talk")
+            commandQueue.push_back(kTalk);
+        else if (command == "listen")
+            commandQueue.push_back(kListen);
+        else if (command == "on")
+            commandQueue.push_back(kOn);
+        else if (command == "off")
+            commandQueue.push_back(kOff);
+        else if (command == "exit") {
+            commandQueue.push_back(kExit);
+            console = false;
+        }
+    }
+}
+
 int main() {
     std::deque<pantomime::Video> pantomime;
     std::deque<syllable::Noise> sound;
     std::deque<animal::AnimalDecodingStub> types;
-    std::condition_variable reactive_cv_;
+    bool reactive_cv_ = false;
     // Создаем внешние реакции в виде "животных"
     reactor::AnimalReactor env(pantomime, sound, types, reactive_cv_);
     // Создаем переводчик
     translator::AnimalTranslatinator translator(pantomime, sound, reactive_cv_);
     std::cout << "Начинаем проверку работоспособностии устройства" << std::endl;
     // Запускаем производство объектов с животными
-    std::thread reactor_thread(&reactor::AnimalReactor::startTalking, &env);
-    translator.turnOn();
+    std::thread console_thread(&listenConsole);
     while (env.is_talking) {
-        // Запускаем переводчик на прослушивание пока животные разговариваают
-        translator.startListening(types);
+        if (commandQueue.empty())
+            continue;
+        Command command = commandQueue.front();
+        commandQueue.pop_front();
+        switch (command) {
+            case kTalk:
+                env.startTalking();
+                break;
+            case kListen:
+                translator.startListening(types);
+                break;
+            case kOn:
+                translator.turnOn();
+                break;
+            case kOff:
+                translator.turnOff();
+                break;
+            case kExit:
+                env.is_talking = false;
+                break;
+        }
     }
-    translator.turnOff();
-    reactor_thread.join();
+    console_thread.join();
     return 0;
 }

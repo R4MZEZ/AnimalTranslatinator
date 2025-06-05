@@ -5,7 +5,10 @@ namespace translator {
 animal::PreparedData Sensor::prepareBatchOfData() {
     // Ожидание пока получим минимальный набор данных для анализа
     animal::PackedData packed_data = primary_sensor.waitAndPackData();
+    if (!packed_data.ready)
+        return (animal::PreparedData){.ready = false};
     animal::PreparedData prepared_data;
+    prepared_data.ready = true;
     // Обрабатываем аудио-данные
     prepared_data.sound = sound_formatter.devideCarrier(packed_data.noise);
     // Обрабатываем видео-данные
@@ -14,13 +17,13 @@ animal::PreparedData Sensor::prepareBatchOfData() {
 }
 
 animal::PackedData Sensor::PrimarySensor::waitAndPackData() {
-    std::mutex mu_;
-    std::unique_lock lock(mu_);
+    if (!cv_)
+        return (animal::PackedData){.ready = false};
     std::cout << "Устройство ждет окончания беседы" << std::endl;
     // Вместо реального ожидания поступления минимального кол-ва данных ожидаем оповещения от класса Животного
-    cv_.wait(lock);
     // Создаем упакованные первичные данные с датчиков
     animal::PackedData packed_data;
+    packed_data.ready = true;
     packed_data.video = pantomime.front();
     pantomime.pop_front();
     packed_data.noise = sound.front();
@@ -186,15 +189,19 @@ void AnimalTranslatinator::turnOff() {
 }
 
 void AnimalTranslatinator::startListening(std::deque<animal::AnimalDecodingStub>& types) {
-    if (power_) {
+        if (power_) {
         std::cout << "На устройстве нажата кнопка прослушивания" << std::endl;
         // Подготовка первичных данных
         animal::PreparedData prepared_data = sensor.prepareBatchOfData();
+        if (!prepared_data.ready)
+            return;
         // Перевод сообщения
         auto messages = translator.translate(prepared_data, types.front().types);
         types.pop_front();
         // Вывод пеервода на экран
         monitor.display(messages);
+    } else {
+        std::cout << "Кажется, устройство выключено" << std::endl;
     }
 }
 

@@ -25,8 +25,7 @@ public:
      * @param[in] sound Имитация аудио-потока
      * @param[in] reactive_cv Триггер на поступление данных.
      */
-    Sensor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-           std::condition_variable& reactive_cv_)
+    Sensor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound, bool& reactive_cv_)
         : primary_sensor(pantomime, sound, reactive_cv_) {}
 
     /*!
@@ -50,8 +49,7 @@ private:
          * @param[in] sound Имитация аудио-потока
          * @param[in] reactive_cv Триггер на поступление данных.
          */
-        PrimarySensor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-                      std::condition_variable& reactive_cv_)
+        PrimarySensor(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound, bool& reactive_cv_)
             : pantomime(pantomime),
               sound(sound),
               cv_(reactive_cv_) {}
@@ -67,7 +65,7 @@ private:
     private:
         std::deque<pantomime::Video>& pantomime;
         std::deque<syllable::Noise>& sound;
-        std::condition_variable& cv_;
+        bool& cv_;
     };
 
     /*!
@@ -326,7 +324,7 @@ public:
      * @param[in] reactive_cv Триггер на поступление данных.
      */
     AnimalTranslatinator(std::deque<pantomime::Video>& pantomime, std::deque<syllable::Noise>& sound,
-                         std::condition_variable& reactive_cv_)
+                         bool& reactive_cv_)
         : sensor(pantomime, sound, reactive_cv_) {}
 
     /*!
