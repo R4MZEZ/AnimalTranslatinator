@@ -188,21 +188,73 @@ void AnimalTranslatinator::turnOff() {
     power_ = false;
 }
 
-void AnimalTranslatinator::startListening(std::deque<animal::AnimalDecodingStub>& types) {
-        if (power_) {
+static double signedCorrection(double value) {
+    return (std::rand() % 2) ? value : -value;
+}
+
+static double correction() {
+    return 1 + signedCorrection((double)std::rand() / RAND_MAX / 10);
+}
+
+double AnimalTranslatinator::startListening(std::deque<animal::AnimalDecodingStub>& types) {
+    double time_counter = 0;
+    if (power_) {
         std::cout << "На устройстве нажата кнопка прослушивания" << std::endl;
         // Подготовка первичных данных
         animal::PreparedData prepared_data = sensor.prepareBatchOfData();
+
+        double video_time_;
+        if (hardware_video_) {
+            video_time_ = (double)kHardwareVideoStep.second / kHardFreq / 1000000000;
+        } else {
+            video_time_ = (double)kHardwareVideoStep.first / kSoftFreq / 1000000000;
+        }
+        video_time_ *= correction();
+        std::cout << "Обработка видео заняла " << video_time_ << " секунд" << std::endl;
+        time_counter += video_time_;
+
+        double audio_time_;
+        if (hardware_audio_) {
+            audio_time_ = (double)kHardwareAudioStep.second / kHardFreq / 1000000000;
+        } else {
+            audio_time_ = (double)kHardwareAudioStep.first / kSoftFreq / 1000000000;
+        }
+        audio_time_ *= correction();
+        std::cout << "Обработка аудио заняла " << audio_time_ << " секунд" << std::endl;
+        time_counter += audio_time_;
+
         if (!prepared_data.ready)
-            return;
+            return 0;
         // Перевод сообщения
         auto messages = translator.translate(prepared_data, types.front().types);
+
+        double classify_time_;
+        if (hardware_classify) {
+            classify_time_ = (double)kHardwareClassifyStep.second / kHardFreq / 1000000000;
+        } else {
+            classify_time_ = (double)kHardwareClassifyStep.first / kSoftFreq / 1000000000;
+        }
+        classify_time_ *= correction();
+        std::cout << "Классификация животного заняла " << classify_time_ << " секунд" << std::endl;
+        time_counter += classify_time_;
+
+        double decoding_time_;
+        if (hardware_decoding_) {
+            decoding_time_ = (double)kHardwareDecodingStep.second / kHardFreq / 1000000000;
+        } else {
+            decoding_time_ = (double)kHardwareDecodingStep.first / kSoftFreq / 1000000000;
+        }
+        decoding_time_ *= correction();
+        std::cout << "Определение настроения животного заняло " << decoding_time_ << " секунд" << std::endl;
+        time_counter += decoding_time_;
+
         types.pop_front();
         // Вывод пеервода на экран
         monitor.display(messages);
     } else {
         std::cout << "Кажется, устройство выключено" << std::endl;
     }
+    return time_counter;
 }
 
 }  // namespace translator

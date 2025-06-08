@@ -343,9 +343,21 @@ public:
      * @param[in] sound Входной поток аудио
      * @param[in] types Входной поток типов животных (для заглушки декодирования)
      */
-    void startListening(std::deque<animal::AnimalDecodingStub>& types);
+    double startListening(std::deque<animal::AnimalDecodingStub>& types);
+
+    void setHardwareVideo(bool value) { hardware_video_ = value; };
+
+    void setHardwareAudio(bool value) { hardware_audio_ = value; };
+
+    void setHardwareClassify(bool value) { hardware_classify = value; };
+
+    void setHardwareDecoding(bool value) { hardware_decoding_ = value; };
 
 private:
+    bool hardware_video_    = false;
+    bool hardware_audio_    = false;
+    bool hardware_classify  = false;
+    bool hardware_decoding_ = false;
     /// @brief Обработчик внешних сигналов
     Sensor sensor;
     /// @brief Переводчик сообщения
@@ -353,6 +365,14 @@ private:
     /// @brief Монитор для вывода полученной информации
     Monitor monitor;
     bool power_ = false;
+    /// @brief Множители тактовой частоты
+    static constexpr double kHardFreq = 1.5;
+    static constexpr double kSoftFreq = 3.5;
+    /// @brief Количество тактов
+    static constexpr std::pair<long, long> kHardwareVideoStep    = {35000000000, 300000000};
+    static constexpr std::pair<long, long> kHardwareAudioStep    = {3000000000, 30000000};
+    static constexpr std::pair<long, long> kHardwareClassifyStep = {1500000000, 15000000};
+    static constexpr std::pair<long, long> kHardwareDecodingStep = {6500000000, 65000000};
 };
 
 }  // namespace translator
