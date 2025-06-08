@@ -18,8 +18,9 @@ enum Command {
     kSoftVideo,
     kHardAudio,
     kSoftAudio,
-    kHardClassify,
-    kSoftClassify,
+    kGpuClassify,
+    kNpuClassify,
+    kCpuClassify,
     kHardDecoding,
     kSoftDecoding,
     kExit
@@ -50,10 +51,12 @@ void listenConsole() {
             commandQueue.push_back(kHardAudio);
         else if (command == "soft audio")
             commandQueue.push_back(kSoftAudio);
-        else if (command == "hard classify")
-            commandQueue.push_back(kHardClassify);
-        else if (command == "soft classify")
-            commandQueue.push_back(kSoftClassify);
+        else if (command == "gpu")
+            commandQueue.push_back(kGpuClassify);
+        else if (command == "npu")
+            commandQueue.push_back(kNpuClassify);
+        else if (command == "cpu")
+            commandQueue.push_back(kCpuClassify);
         else if (command == "hard decoding")
             commandQueue.push_back(kHardDecoding);
         else if (command == "soft decoding")
@@ -108,11 +111,14 @@ int main() {
             case kSoftAudio:
                 translator.setHardwareAudio(false);
                 break;
-            case kHardClassify:
-                translator.setHardwareClassify(true);
+            case kGpuClassify:
+                translator.setHardwareClassify(0);
                 break;
-            case kSoftClassify:
-                translator.setHardwareClassify(false);
+            case kNpuClassify:
+                translator.setHardwareClassify(1);
+                break;
+            case kCpuClassify:
+                translator.setHardwareClassify(2);
                 break;
             case kHardDecoding:
                 translator.setHardwareDecoding(true);

@@ -349,14 +349,17 @@ public:
 
     void setHardwareAudio(bool value) { hardware_audio_ = value; };
 
-    void setHardwareClassify(bool value) { hardware_classify = value; };
+    void setHardwareClassify(long value) {
+        std::cout << "Изменено аппаратное исполнение" << std::endl;
+        hardware_classify = value;
+    };
 
     void setHardwareDecoding(bool value) { hardware_decoding_ = value; };
 
 private:
     bool hardware_video_    = false;
     bool hardware_audio_    = false;
-    bool hardware_classify  = false;
+    long hardware_classify  = 0;
     bool hardware_decoding_ = false;
     /// @brief Обработчик внешних сигналов
     Sensor sensor;
@@ -371,7 +374,8 @@ private:
     /// @brief Количество тактов
     static constexpr std::pair<long, long> kHardwareVideoStep    = {35000000000, 300000000};
     static constexpr std::pair<long, long> kHardwareAudioStep    = {3000000000, 30000000};
-    static constexpr std::pair<long, long> kHardwareClassifyStep = {1500000000, 15000000};
+    std::vector<long> kHardwareClassifyStep                      = {100000, 300000, 2500000};
+    std::vector<double> kHardwareClassifyFreq                    = {1.4, 1.0, 3.5};
     static constexpr std::pair<long, long> kHardwareDecodingStep = {6500000000, 65000000};
 };
 

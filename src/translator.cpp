@@ -228,12 +228,8 @@ double AnimalTranslatinator::startListening(std::deque<animal::AnimalDecodingStu
         // Перевод сообщения
         auto messages = translator.translate(prepared_data, types.front().types);
 
-        double classify_time_;
-        if (hardware_classify) {
-            classify_time_ = (double)kHardwareClassifyStep.second / kHardFreq / 1000000000;
-        } else {
-            classify_time_ = (double)kHardwareClassifyStep.first / kSoftFreq / 1000000000;
-        }
+        double classify_time_ =
+            kHardwareClassifyStep[hardware_classify] / kHardwareClassifyFreq[hardware_classify] / 1000000000;
         classify_time_ *= correction();
         std::cout << "Классификация животного заняла " << classify_time_ << " секунд" << std::endl;
         time_counter += classify_time_;
